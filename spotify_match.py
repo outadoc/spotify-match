@@ -14,7 +14,7 @@ from mutagen.easyid3 import EasyID3
 Track = namedtuple("Track", "id track album artist")
 
 def search_for_track(title, album, artist):
-    req = "/v1/search?type=track&q="
+    req = "/v1/search?type=track&limit=1&q="
 
     if title:
         req += "track%3A" + urllib.quote_plus(title) + "+"
@@ -38,6 +38,8 @@ def search_for_track(title, album, artist):
         return Track(id=strack['id'], album=salbum['name'],
             artist=sartist['name'], track=strack['name'])
 
+    return Track(id=-1, album=album, artist=artist, track=title)
+
 def list_files_in_dir(dir):
     matches = []
 
@@ -60,7 +62,7 @@ for track in list_files_in_dir(args.path):
 
     title = audio["title"][0]
     album = audio["album"][0]
-    artist = audio["performer"][0]
+    artist = audio["artist"][0]
 
     match = search_for_track(title, album, artist)
     csvwriter.writerow(match)
