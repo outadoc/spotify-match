@@ -8,29 +8,21 @@ import csv
 import fnmatch
 import os
 import sys
-from itertools import izip_longest
+import spotipy
+
 from collections import namedtuple
 from mutagen.easyid3 import EasyID3
+
+sp = spotipy.Spotify()
 
 Track = namedtuple("Track", "artist album track id")
 csv_fieldnames = ['artist', 'album', 'track', 'id']
 
 def search_for_track(title, album, artist):
-    req = "/v1/search?type=track&limit=1&q="
+    query = "track:" + title + " AND " + "artist:" + artist
 
-    if title:
-        req += "track%3A" + urllib.quote_plus(title) + "+"
-    #if album:
-    #    req += "album%3A" + urllib.quote_plus(album) + "+"
-    if artist:
-        req += "artist%3A" + urllib.quote_plus(artist)
-
-    sock = httplib.HTTPSConnection('api.spotify.com')
-    sock.request("GET", req)
-    res = sock.getresponse()
-
-    obj = json.loads(res.read())
-    tracks = obj['tracks']['items']
+    result = sp.search(q=query, limit=1, type="track")
+    tracks = result['tracks']['items']
 
     if len(tracks) > 0:
         strack = tracks[0]
@@ -69,7 +61,7 @@ def generate_csv_match_report():
     track_count = len(track_list)
 
     for i, track in enumerate(track_list):
-        update_progress(i, track_count)
+        update_progress(i + 1, track_count)
 
         # Extract ID3 tags
         audio = EasyID3(track)
@@ -84,33 +76,5 @@ def generate_csv_match_report():
     csvout.close()
     print "\n"
 
-def get_ids_from_matches_file():
-    ids_to_save = []
-    csvin = open('matches.csv')
-    reader = csv.DictReader(csvin)
-
-    for row in reader:
-        track = Track(artist=row['artist'], album=row['album'], track=row['track'], id=row['id'])
-        if track.id != '-1':
-            ids_to_save.append(track.id)
-
-    csvin.close()
-    return ids_to_save
-
-def group_by_n_elems(l, n):
-    n = max(1, n)
-    return [l[i:i + n] for i in range(0, len(l), n)]
-
-def save_ids_to_library(ids):
-    ids_grp = group_by_n_elems(ids, 50)
-
-    for group in ids_grp:
-        print json.dumps(group)
-        sock = httplib.HTTPSConnection('api.spotify.com')
-        #sock.request('PUT', '/v1/me/tracks')
-
 args = get_args()
-
 generate_csv_match_report()
-ids = get_ids_from_matches_file()
-save_ids_to_library(ids)
